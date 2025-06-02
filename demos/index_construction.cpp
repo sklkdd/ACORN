@@ -38,6 +38,7 @@
 #include <cmath>   // for std::mean and std::stdev
 #include <nlohmann/json.hpp>
 #include "utils.cpp"
+#include <chrono>
 
 #include "fanns_survey_helpers.cpp"
 
@@ -59,7 +60,7 @@ int main(int argc, char *argv[]) {
 
 	// Parse arguments
 	if (argc != 6) {
-		fprintf(stderr, "Syntax: <path_database_vectors> <path_index> <M> <gamma> <M_beta>\n");
+		fprintf(stderr, "Usage: %s <path_database_vectors> <path_index> <M> <gamma> <M_beta>\n", argv[0]);
 		exit(1);
 	}
 
@@ -84,11 +85,14 @@ int main(int argc, char *argv[]) {
     faiss::IndexACORNFlat acorn_index(d, M, gamma, metadata, M_beta);
 
 	// Add vectors to index: This is the part that is timed for the index construction time
-	double t0 = elapsed();
+	auto start_time = std::chrono::high_resolution_clock::now();	
 	acorn_index.add(n_items, database_vectors);
+	auto end_time = std::chrono::high_resolution_clock::now();
 
 	// Print statistics
-	printf("Index construction time: %.3f s\n", elapsed() - t0);
+	std::chrono::duration<double> time_diff = end_time - start_time;
+	double duration = time_diff.count();
+	printf("Index construction time: %.3f s\n", duration);
 	peak_memory_footprint();
 	delete[] database_vectors;
 

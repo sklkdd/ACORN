@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
 
 	// Check if the number of arguments is correct
 	if (argc < 9) {
-		fprintf(stderr, "Syntax: <path_database_attributes> <path_query_vectors> <path_query_attributes> <path_groundtruth> <path_index> <filter_type> <k> <efs>\n");
+		fprintf(stderr, "Usage: %s <path_database_attributes> <path_query_vectors> <path_query_attributes> <path_groundtruth> <path_index> <filter_type> <k> <efs>\n", argv[0]);
 		exit(1);	
 	}
 
@@ -95,10 +95,12 @@ int main(int argc, char *argv[]) {
 	// Load index from file
 	auto& acorn_index = *dynamic_cast<faiss::IndexACORNFlat*>(faiss::read_index(path_index.c_str()));
 
-	// Set search parameter
+	// Set search parameter and prepare data structure for results
 	acorn_index.acorn.efSearch = efs;
+    std::vector<faiss::idx_t> nearest_neighbors(k * n_queries);
+	std::vector<float> distances(k * n_queries);
 
-	double t0 = elapsed();
+	std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
 	// Compute bitmap for filtering
 	std::vector<char> filter_bitmap;
 	// EM
@@ -109,8 +111,9 @@ int main(int argc, char *argv[]) {
 		// Read query attributes
 		vector<int> query_attributes = read_one_int_per_line(path_query_attributes);
 		assert(n_queries == query_attributes.size() && "Number of queries in query vectors and query attributes do not match");
-		// Compute filter bitmap
+		// Compute filter bitmap (timed)
 		filter_bitmap.resize(n_queries * n_items);
+		start_time = std::chrono::high_resolution_clock::now();
 		for (size_t q = 0; q < n_queries; q++) {
 			for (size_t i = 0; i < n_items; i++) {
 				filter_bitmap[q * n_items + i] = (database_attributes[i] == query_attributes[q]);
@@ -125,8 +128,9 @@ int main(int argc, char *argv[]) {
 		// Read query attributes
 		vector<pair<int,int>> query_attributes = read_two_ints_per_line(path_query_attributes);
 		assert(n_queries == query_attributes.size() && "Number of queries in query vectors and query attributes do not match");
-		// Compute filter bitmap
+		// Compute filter bitmap (timed)
 		filter_bitmap.resize(n_queries * n_items);
+		start_time = std::chrono::high_resolution_clock::now();
 		for (size_t q = 0; q < n_queries; q++) {
 			for (size_t i = 0; i < n_items; i++) {
 				filter_bitmap[q * n_items + i] = (database_attributes[i] >= query_attributes[q].first && database_attributes[i] <= query_attributes[q].second);
@@ -143,6 +147,7 @@ int main(int argc, char *argv[]) {
 		assert(n_queries == query_attributes.size() && "Number of queries in query vectors and query attributes do not match");
 		// Compute filter bitmap
 		filter_bitmap.resize(n_queries * n_items);
+		start_time = std::chrono::high_resolution_clock::now();
 		for (size_t q = 0; q < n_queries; q++) {
 			for (size_t i = 0; i < n_items; i++) {
 				filter_bitmap[q * n_items + i] = (find(database_attributes[i].begin(), database_attributes[i].end(), query_attributes[q]) != database_attributes[i].end());
@@ -154,10 +159,14 @@ int main(int argc, char *argv[]) {
 
 	// Execute queries on ACORN index
 	// TODO: How does ACORN behave if there are less than k matching items?
-    std::vector<faiss::idx_t> nearest_neighbors(k * n_queries);
-	std::vector<float> distances(k * n_queries);
+	std::chrono::time_point<std::chrono::high_resolution_clock> mid_time = std::chrono::high_resolution_clock::now();
 	acorn_index.search(n_queries, query_vectors, k, distances.data(), nearest_neighbors.data(), filter_bitmap.data());
-	double query_execution_time = elapsed() - t0;		
+	// Compute time
+	auto end_time = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> time_diff = end_time - start_time;
+	std::chrono::duration<double> time_diff_2 = end_time - mid_time;
+	double query_execution_time = time_diff.count();
+	double query_execution_time_2 = time_diff_2.count();
 
 	// Compute recall 
 	// TODO: Check what happens (what ACORN returns) if there are less than k matching items
@@ -176,9 +185,13 @@ int main(int argc, char *argv[]) {
 		match_count += intersection.size();
 		total_count += n_valid_neighbors;
 	}
+
+	// Report results
 	double recall = (double)match_count / total_count;
 	double qps = (double)n_queries / query_execution_time;
+	double qps_2 = (double)n_queries / query_execution_time_2;
     peak_memory_footprint();
+	printf("Queries per second (without filtering): %.3f\n", qps_2);
 	printf("Queries per second: %.3f\n", qps);
 	printf("Recall: %.3f\n", recall);
 }

@@ -40,6 +40,7 @@
 #include "utils.cpp"
 
 #include <atomic>
+#include <omp.h>
 #include "fanns_survey_helpers.cpp"
 #include "global_thread_counter.h"
 
@@ -50,9 +51,8 @@ std::atomic<int> peak_threads(1);
 
 // Execute the queries, compute and report the recall
 int main(int argc, char *argv[]) {
-	// Get number of threads
-    unsigned int nthreads = std::thread::hardware_concurrency();
-	std::cout << "Number of threads: " << nthreads << std::endl;
+	// Restrict number of threads to 1 for ACORN
+	omp_set_num_threads(1);
 
 	// Monitor thread count
     std::atomic<bool> done(false);
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
 	double recall = (double)match_count / total_count;
 	double qps = (double)n_queries / query_execution_time;
 	double qps_2 = (double)n_queries / query_execution_time_2;
-	printf("Maximum number of threads: %d\n", peak_threads.load());
+	printf("Maximum number of threads: %d\n", peak_threads.load()-1);	// Subtract 1 because of the monitoring thread
     peak_memory_footprint();
 	printf("Queries per second (without filtering): %.3f\n", qps_2);
 	printf("Queries per second: %.3f\n", qps);

@@ -50,10 +50,6 @@ std::atomic<int> peak_threads(1);
 
 // Create index, write it to file and collect statistics
 int main(int argc, char *argv[]) {
-	// Get number of threads
-    unsigned int nthreads = std::thread::hardware_concurrency();
-	std::cout << "Number of threads: " << nthreads << std::endl;
-
 	// Prepare thread monitoring
     std::atomic<bool> done(false);
     std::thread monitor(monitor_thread_count, std::ref(done));
@@ -102,7 +98,7 @@ int main(int argc, char *argv[]) {
 	// Print statistics
 	std::chrono::duration<double> time_diff = end_time - start_time;
 	double duration = time_diff.count();
-	printf("Maximum number of threads: %d\n", peak_threads.load());
+	printf("Maximum number of threads: %d\n", peak_threads.load()-1);	// Subtract 1 because of the monitoring thread
 	printf("Index construction time: %.3f s\n", duration);
 	peak_memory_footprint();
 	delete[] database_vectors;

@@ -108,9 +108,12 @@ add_executable(test_acorn EXCLUDE_FROM_ALL test_acorn.cpp)
 target_link_libraries(test_acorn PRIVATE faiss)
 
 find_package(Threads REQUIRED)
+find_package(OpenMP REQUIRED)
 
 add_executable(index_construction EXCLUDE_FROM_ALL index_construction.cpp)
-target_link_libraries(index_construction PRIVATE faiss Threads::Threads)
+target_link_libraries(index_construction
+    PRIVATE faiss Threads::Threads OpenMP::OpenMP_CXX)
 
 add_executable(query_execution EXCLUDE_FROM_ALL query_execution.cpp)
-target_link_libraries(query_execution PRIVATE faiss Threads::Threads)
+target_link_libraries(query_execution
+    PRIVATE faiss Threads::Threads OpenMP::OpenMP_CXX)

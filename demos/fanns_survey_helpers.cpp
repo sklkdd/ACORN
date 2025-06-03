@@ -8,6 +8,8 @@
 #include <atomic>
 #include <chrono>
 
+#include "global_thread_counter.h"
+
 
 std::vector<std::vector<float>> read_fvecs(const std::string& filename) {
     std::ifstream file(filename, std::ios::binary);

@@ -39,8 +39,9 @@
 #include <nlohmann/json.hpp>
 #include "utils.cpp"
 
-#include "fanns_survey_helpers.cpp"
 #include <atomic>
+#include "fanns_survey_helpers.cpp"
+#include "global_thread_counter.h"
 
 using namespace std;
 

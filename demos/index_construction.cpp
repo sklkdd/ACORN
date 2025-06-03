@@ -40,8 +40,9 @@
 #include "utils.cpp"
 #include <chrono>
 
-#include "fanns_survey_helpers.cpp"
 #include <atomic>
+#include "fanns_survey_helpers.cpp"
+#include "global_thread_counter.h"
 
 
 // Global atomic to store peak thread count

@@ -41,15 +41,21 @@
 #include <chrono>
 
 #include "fanns_survey_helpers.cpp"
+#include <atomic>
 
 
-
+// Global atomic to store peak thread count
+std::atomic<int> peak_threads(1);
 
 // Create index, write it to file and collect statistics
 int main(int argc, char *argv[]) {
 	// Get number of threads
     unsigned int nthreads = std::thread::hardware_concurrency();
 	std::cout << "Number of threads: " << nthreads << std::endl;
+
+	// Prepare thread monitoring
+    std::atomic<bool> done(false);
+    std::thread monitor(monitor_thread_count, std::ref(done));
 
 	// Parameters 
     std::string path_database_vectors;
@@ -88,10 +94,14 @@ int main(int argc, char *argv[]) {
 	auto start_time = std::chrono::high_resolution_clock::now();	
 	acorn_index.add(n_items, database_vectors);
 	auto end_time = std::chrono::high_resolution_clock::now();
+	// Stop thread monitoring
+    done = true;
+    monitor.join();
 
 	// Print statistics
 	std::chrono::duration<double> time_diff = end_time - start_time;
 	double duration = time_diff.count();
+	printf("Maximum number of threads: %d\n", peak_threads.load());
 	printf("Index construction time: %.3f s\n", duration);
 	peak_memory_footprint();
 	delete[] database_vectors;

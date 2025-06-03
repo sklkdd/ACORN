@@ -40,14 +40,22 @@
 #include "utils.cpp"
 
 #include "fanns_survey_helpers.cpp"
+#include <atomic>
 
 using namespace std;
+
+// Global atomic to store peak thread count
+std::atomic<int> peak_threads(1);
 
 // Execute the queries, compute and report the recall
 int main(int argc, char *argv[]) {
 	// Get number of threads
     unsigned int nthreads = std::thread::hardware_concurrency();
 	std::cout << "Number of threads: " << nthreads << std::endl;
+
+	// Monitor thread count
+    std::atomic<bool> done(false);
+    std::thread monitor(monitor_thread_count, std::ref(done));
     
 	// Parameters
     std::string path_database_attributes; 		
@@ -156,13 +164,19 @@ int main(int argc, char *argv[]) {
 	} else {
 		fprintf(stderr, "Unknown filter type: %s\n", filter_type.c_str());
 	}
+	// Timing after filter bitmap computation but before query execution
+	std::chrono::time_point<std::chrono::high_resolution_clock> mid_time = std::chrono::high_resolution_clock::now();
 
 	// Execute queries on ACORN index
 	// TODO: How does ACORN behave if there are less than k matching items?
-	std::chrono::time_point<std::chrono::high_resolution_clock> mid_time = std::chrono::high_resolution_clock::now();
 	acorn_index.search(n_queries, query_vectors, k, distances.data(), nearest_neighbors.data(), filter_bitmap.data());
-	// Compute time
 	auto end_time = std::chrono::high_resolution_clock::now();
+
+    // Stop thread count monitoring
+    done = true;
+    monitor.join();
+
+	// Compute time
 	std::chrono::duration<double> time_diff = end_time - start_time;
 	std::chrono::duration<double> time_diff_2 = end_time - mid_time;
 	double query_execution_time = time_diff.count();
@@ -190,6 +204,7 @@ int main(int argc, char *argv[]) {
 	double recall = (double)match_count / total_count;
 	double qps = (double)n_queries / query_execution_time;
 	double qps_2 = (double)n_queries / query_execution_time_2;
+	printf("Maximum number of threads: %d\n", peak_threads.load());
     peak_memory_footprint();
 	printf("Queries per second (without filtering): %.3f\n", qps_2);
 	printf("Queries per second: %.3f\n", qps);

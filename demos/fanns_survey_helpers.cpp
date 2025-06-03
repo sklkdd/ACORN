@@ -4,6 +4,9 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <thread>
+#include <atomic>
+#include <chrono>
 
 
 std::vector<std::vector<float>> read_fvecs(const std::string& filename) {
@@ -141,3 +144,25 @@ void peak_memory_footprint()
     info.close();
 }
 
+// Read current thread count from /proc/self/status
+int get_thread_count() {
+    std::ifstream status("/proc/self/status");
+    std::string line;
+    while (std::getline(status, line)) {
+        if (line.rfind("Threads:", 0) == 0) {
+            return std::stoi(line.substr(8));
+        }
+    }
+    return -1;
+}
+
+// Background monitor that updates peak thread count
+void monitor_thread_count(std::atomic<bool>& done_flag) {
+    while (!done_flag) {
+        int current = get_thread_count();
+        if (current > peak_threads) {
+            peak_threads = current;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}

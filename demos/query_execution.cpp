@@ -51,7 +51,7 @@ std::atomic<int> peak_threads(1);
 
 // Execute the queries, compute and report the recall
 int main(int argc, char *argv[]) {
-	// Restrict number of threads to 1 for ACORN
+	// Restrict number of threads to 1 for query execution
 	omp_set_num_threads(1);
 
 	// Monitor thread count

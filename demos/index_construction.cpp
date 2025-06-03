@@ -50,6 +50,10 @@ std::atomic<int> peak_threads(1);
 
 // Create index, write it to file and collect statistics
 int main(int argc, char *argv[]) {
+    // Get number of WH threads and use that number of threads for the index construction
+    unsigned int nthreads = std::thread::hardware_concurrency();
+	omp_set_num_threads(nthreads);
+
 	// Prepare thread monitoring
     std::atomic<bool> done(false);
     std::thread monitor(monitor_thread_count, std::ref(done));

@@ -7,6 +7,7 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include <unistd.h>
 
 #include "global_thread_counter.h"
 

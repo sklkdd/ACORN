@@ -165,6 +165,6 @@ void monitor_thread_count(std::atomic<bool>& done_flag) {
         if (current > peak_threads) {
             peak_threads = current;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }

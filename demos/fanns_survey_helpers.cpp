@@ -147,6 +147,78 @@ void peak_memory_footprint()
     info.close();
 }
 
+// Read EM+R database attributes: format "<em_value>,<r_value>" per line
+// Returns vector of pairs: (em_value, r_value)
+std::vector<std::pair<int, int>> read_em_r_database_attributes(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Error opening file: " + filename);
+    }
+    std::vector<std::pair<int, int>> result;
+    std::string line;
+    int line_number = 0;
+    while (std::getline(file, line)) {
+        ++line_number;
+        std::stringstream ss(line);
+        std::string em_str, r_str;
+        if (!std::getline(ss, em_str, ',') || !std::getline(ss, r_str) || !ss.eof()) {
+            throw std::runtime_error("Invalid format at line " + std::to_string(line_number) + ": expected <em>,<r>");
+        }
+        try {
+            int em_val = std::stoi(em_str);
+            int r_val = std::stoi(r_str);
+            result.emplace_back(em_val, r_val);
+        } catch (...) {
+            throw std::runtime_error("Invalid integer value at line " + std::to_string(line_number));
+        }
+    }
+    return result;
+}
+
+// EM+R query attributes structure: em_value and (r_start, r_end) range
+struct EMRQueryAttribute {
+    int em_value;
+    int r_start;
+    int r_end;
+};
+
+// Read EM+R query attributes: format "<em_value>,<r_start>-<r_end>" per line
+std::vector<EMRQueryAttribute> read_em_r_query_attributes(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Error opening file: " + filename);
+    }
+    std::vector<EMRQueryAttribute> result;
+    std::string line;
+    int line_number = 0;
+    while (std::getline(file, line)) {
+        ++line_number;
+        // Parse "<em_value>,<r_start>-<r_end>"
+        size_t comma_pos = line.find(',');
+        if (comma_pos == std::string::npos) {
+            throw std::runtime_error("Invalid format at line " + std::to_string(line_number) + ": missing comma");
+        }
+        std::string em_str = line.substr(0, comma_pos);
+        std::string range_str = line.substr(comma_pos + 1);
+        size_t dash_pos = range_str.find('-');
+        if (dash_pos == std::string::npos) {
+            throw std::runtime_error("Invalid format at line " + std::to_string(line_number) + ": missing dash in range");
+        }
+        std::string r_start_str = range_str.substr(0, dash_pos);
+        std::string r_end_str = range_str.substr(dash_pos + 1);
+        try {
+            EMRQueryAttribute attr;
+            attr.em_value = std::stoi(em_str);
+            attr.r_start = std::stoi(r_start_str);
+            attr.r_end = std::stoi(r_end_str);
+            result.push_back(attr);
+        } catch (...) {
+            throw std::runtime_error("Invalid integer value at line " + std::to_string(line_number));
+        }
+    }
+    return result;
+}
+
 // Read current thread count from /proc/self/status
 int get_thread_count() {
     std::ifstream status("/proc/self/status");

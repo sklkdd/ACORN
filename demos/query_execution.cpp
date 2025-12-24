@@ -162,6 +162,34 @@ int main(int argc, char *argv[]) {
 				filter_bitmap[q * n_items + i] = (find(database_attributes[i].begin(), database_attributes[i].end(), query_attributes[q]) != database_attributes[i].end());
 			}
 		}
+	}
+	// EM_R: Combined Exact Match + Range filter
+	// Database format: <em_value>,<r_value> per line
+	// Query format: <em_value>,<r_start>-<r_end> per line
+	// A database item matches if: db_em == query_em AND r_start <= db_r <= r_end
+	else if (filter_type == "EM_R"){
+		// Read database attributes (pair of em, r values)
+		vector<pair<int, int>> database_attributes = read_em_r_database_attributes(path_database_attributes);
+		size_t n_items = database_attributes.size();
+		// Read query attributes (em value, r_start, r_end)
+		vector<EMRQueryAttribute> query_attributes = read_em_r_query_attributes(path_query_attributes);
+		assert(n_queries == query_attributes.size() && "Number of queries in query vectors and query attributes do not match");
+		// Compute filter bitmap (timed)
+		filter_bitmap.resize(n_queries * n_items);
+		start_time = std::chrono::high_resolution_clock::now();
+		for (size_t q = 0; q < n_queries; q++) {
+			int q_em = query_attributes[q].em_value;
+			int q_r_start = query_attributes[q].r_start;
+			int q_r_end = query_attributes[q].r_end;
+			for (size_t i = 0; i < n_items; i++) {
+				int db_em = database_attributes[i].first;
+				int db_r = database_attributes[i].second;
+				// Both conditions must be true: exact match on EM AND range match on R
+				bool em_match = (db_em == q_em);
+				bool r_match = (db_r >= q_r_start && db_r <= q_r_end);
+				filter_bitmap[q * n_items + i] = (em_match && r_match);
+			}
+		}
 	} else {
 		fprintf(stderr, "Unknown filter type: %s\n", filter_type.c_str());
 	}
